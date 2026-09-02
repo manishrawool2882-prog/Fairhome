@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fairhome — House Price Estimator</title>
+</head>
+<body>
+    <h1>Fairhome</h1>
+    <p>Estimate a property's value and see why.</p>
+
+    <form action="/predict" method="post">
+
+        <label>Town / City:</label><br>
+        <select name="towncity">
+            {% for t in towns %}
+                <option value="{{ t }}" {% if selected.get('towncity') == t %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+        </select><br><br>
+
+        <label>Floor area (m²):</label><br>
+        <input type="number" name="floor_area" value="{{ selected.get('floor_area', '90') }}"><br><br>
+
+        <label>Property type:</label><br>
+        <select name="propertytype">
+            {% for p in ['Detached','Semi-Detached','Terraced','Flat'] %}
+                <option value="{{ p }}" {% if selected.get('propertytype') == p %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+        </select><br><br>
+
+        <label>Energy rating:</label><br>
+        <select name="energy">
+            {% for e in ['A','B','C','D','E','F','G'] %}
+                <option value="{{ e }}" {% if selected.get('energy', 'C') == e %}selected{% endif %}>{{ e }}</option>
+            {% endfor %}
+        </select><br><br>
+
+        <label>Tenure:</label><br>
+        <select name="duration">
+            {% for d in ['Freehold','Leasehold'] %}
+                <option value="{{ d }}" {% if selected.get('duration') == d %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+        </select><br><br>
+
+        <label>Roughly when built:</label><br>
+        <select name="age_band">
+            {% for label, val in [
+                ('Before 1900','England and Wales: before 1900'),
+                ('1900–1929','England and Wales: 1900-1929'),
+                ('1930–1949','England and Wales: 1930-1949'),
+                ('1950–1966','England and Wales: 1950-1966'),
+                ('1967–1975','England and Wales: 1967-1975'),
+                ('1976–1982','England and Wales: 1976-1982'),
+                ('1983–1990','England and Wales: 1983-1990'),
+                ('1991–1995','England and Wales: 1991-1995'),
+                ('1996–2002','England and Wales: 1996-2002'),
+                ('2003–2006','England and Wales: 2003-2006'),
+                ('2007 onwards','England and Wales: 2007 onwards')
+            ] %}
+                <option value="{{ val }}" {% if selected.get('age_band', 'England and Wales: 2007 onwards') == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select><br><br>
+
+        <button type="submit">Estimate price</button>
+    </form>
+
+    {% if price %}
+    <hr>
+    <h2>Estimated price: {{ price }}</h2>
+    <h3>Why:</h3>
+    <ul>
+        {% for r in reasons %}
+        <li>{{ r }}</li>
+        {% endfor %}
+    </ul>
+    <p><small>Estimated at 2024 market levels. This is a research prototype, not financial advice.</small></p>
+    {% endif %}
+
+</body>
+</html>
