@@ -1,78 +1,228 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Fairhome — House Price Estimator</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fairhome — Property Value Estimator</title>
+<style>
+  :root {
+    --ink: #17282e; --muted: #5c7079; --line: #dde5e7; --bg: #eaefe9;
+    --card: #ffffff; --primary: #14595c;
+    --up: #1f7a4d; --up-bg: #e6f3ec; --down: #b0402f; --down-bg: #f8e9e6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink); line-height: 1.5; padding: 44px 16px; min-height: 100vh; position: relative;
+    background:
+      radial-gradient(circle at 50% -5%, rgba(20,89,92,0.08), transparent 50%),
+      linear-gradient(180deg, #eef2ec 0%, #e6ece4 100%);
+  }
+  body::before {
+    content:""; position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.6;
+    background-image:
+      linear-gradient(rgba(20,89,92,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(20,89,92,0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    -webkit-mask-image: radial-gradient(ellipse 100% 80% at 50% 40%, #000 55%, transparent 100%);
+    mask-image: radial-gradient(ellipse 100% 80% at 50% 40%, #000 55%, transparent 100%);
+  }
+  .wrap { max-width: 680px; margin: 0 auto; position: relative; z-index: 1; }
+  header { margin-bottom: 28px; }
+  .brand { font-size: 31px; font-weight: 700; letter-spacing: -0.02em; color: var(--primary); }
+  .tag { color: var(--muted); margin-top: 4px; }
+  .card {
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.6);
+    border-radius: 16px; padding: 28px; margin-bottom: 22px;
+    box-shadow: 0 10px 34px rgba(20,89,92,0.10);
+  }
+  label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+  .field { margin-bottom: 18px; }
+  select, input {
+    width: 100%; padding: 11px 12px; font-size: 15px;
+    border: 1px solid rgba(20,89,92,0.15); border-radius: 9px;
+    background: rgba(255,255,255,0.55); backdrop-filter: blur(4px);
+    color: var(--ink); font-family: inherit;
+  }
+  select:focus, input:focus { outline: 2px solid var(--primary); border-color: var(--primary); background: rgba(255,255,255,0.9); }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 5px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  button {
+    width: 100%; padding: 14px; font-size: 16px; font-weight: 600; color: #fff;
+    background: var(--primary); border: none; border-radius: 9px; cursor: pointer; margin-top: 4px;
+    transition: background 0.15s;
+  }
+  button:hover { background: #0f4547; }
+  .ac-wrap { position: relative; }
+  .ac-list {
+    position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 20;
+    background: rgba(255,255,255,0.96); backdrop-filter: blur(10px);
+    border: 1px solid var(--line); border-radius: 9px;
+    max-height: 260px; overflow-y: auto; box-shadow: 0 12px 28px rgba(0,0,0,0.10); display: none;
+  }
+  .ac-item { padding: 10px 12px; font-size: 15px; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; }
+  .ac-item:hover, .ac-item.active { background: var(--up-bg); }
+  .ac-item .co { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .ac-empty { padding: 10px 12px; font-size: 14px; color: var(--muted); }
+  .price-label { color: var(--muted); font-size: 14px; }
+  .price { font-size: 44px; font-weight: 700; letter-spacing: -0.02em; color: var(--primary); margin: 2px 0 4px; }
+  .price-note { color: var(--muted); font-size: 13px; }
+  h3 { font-size: 17px; margin: 22px 0 12px; }
+  .reason { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-radius: 9px; margin-bottom: 8px; font-size: 15px; }
+  .reason.up { background: var(--up-bg); } .reason.down { background: var(--down-bg); }
+  .amount { font-weight: 700; white-space: nowrap; margin-left: 14px; }
+  .amount.up { color: var(--up); } .amount.down { color: var(--down); }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 15px; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  td.pay { text-align: right; font-weight: 600; }
+  .afford-meta { color: var(--muted); font-size: 14px; margin-bottom: 10px; }
+  .disclaimer { color: var(--muted); font-size: 12px; margin-top: 18px; line-height: 1.5; }
+</style>
 </head>
 <body>
-    <h1>Fairhome</h1>
-    <p>Estimate a property's value and see why.</p>
+<div class="wrap">
+  <header>
+    <div class="brand">Fairhome</div>
+    <div class="tag">Estimate a property's value across England &amp; Wales — and understand why.</div>
+  </header>
 
-    <form action="/predict" method="post">
+  <form action="/predict" method="post">
+    <div class="card">
+      <div class="field">
+        <label>Town or city</label>
+        <div class="ac-wrap">
+          <input type="text" id="townInput" name="towncity" autocomplete="off"
+                 placeholder="Type a town or city in England or Wales"
+                 value="{{ selected.get('towncity', '') }}">
+          <div class="ac-list" id="acList"></div>
+        </div>
+        <div class="hint">Start typing and choose from the matches.</div>
+      </div>
 
-        <label>Town / City:</label><br>
-        <select name="towncity">
-            {% for t in towns %}
-                <option value="{{ t }}" {% if selected.get('towncity') == t %}selected{% endif %}>{{ t }}</option>
-            {% endfor %}
-        </select><br><br>
-
-        <label>Floor area (m²):</label><br>
-        <input type="number" name="floor_area" value="{{ selected.get('floor_area', '90') }}"><br><br>
-
-        <label>Property type:</label><br>
-        <select name="propertytype">
+      <div class="row2">
+        <div class="field">
+          <label>Floor area (m²)</label>
+          <input type="number" name="floor_area" value="{{ selected.get('floor_area', '90') }}">
+        </div>
+        <div class="field">
+          <label>Property type</label>
+          <select name="propertytype">
             {% for p in ['Detached','Semi-Detached','Terraced','Flat'] %}
-                <option value="{{ p }}" {% if selected.get('propertytype') == p %}selected{% endif %}>{{ p }}</option>
+            <option value="{{ p }}" {% if selected.get('propertytype') == p %}selected{% endif %}>{{ p }}</option>
             {% endfor %}
-        </select><br><br>
+          </select>
+        </div>
+      </div>
 
-        <label>Energy rating:</label><br>
-        <select name="energy">
+      <div class="row2">
+        <div class="field">
+          <label>Energy rating</label>
+          <select name="energy">
             {% for e in ['A','B','C','D','E','F','G'] %}
-                <option value="{{ e }}" {% if selected.get('energy', 'C') == e %}selected{% endif %}>{{ e }}</option>
+            <option value="{{ e }}" {% if selected.get('energy', 'C') == e %}selected{% endif %}>{{ e }}</option>
             {% endfor %}
-        </select><br><br>
-
-        <label>Tenure:</label><br>
-        <select name="duration">
+          </select>
+        </div>
+        <div class="field">
+          <label>Tenure</label>
+          <select name="duration">
             {% for d in ['Freehold','Leasehold'] %}
-                <option value="{{ d }}" {% if selected.get('duration') == d %}selected{% endif %}>{{ d }}</option>
+            <option value="{{ d }}" {% if selected.get('duration') == d %}selected{% endif %}>{{ d }}</option>
             {% endfor %}
-        </select><br><br>
+          </select>
+        </div>
+      </div>
 
-        <label>Roughly when built:</label><br>
+      <div class="field">
+        <label>Roughly when built</label>
         <select name="age_band">
-            {% for label, val in [
-                ('Before 1900','England and Wales: before 1900'),
-                ('1900–1929','England and Wales: 1900-1929'),
-                ('1930–1949','England and Wales: 1930-1949'),
-                ('1950–1966','England and Wales: 1950-1966'),
-                ('1967–1975','England and Wales: 1967-1975'),
-                ('1976–1982','England and Wales: 1976-1982'),
-                ('1983–1990','England and Wales: 1983-1990'),
-                ('1991–1995','England and Wales: 1991-1995'),
-                ('1996–2002','England and Wales: 1996-2002'),
-                ('2003–2006','England and Wales: 2003-2006'),
-                ('2007 onwards','England and Wales: 2007 onwards')
-            ] %}
-                <option value="{{ val }}" {% if selected.get('age_band', 'England and Wales: 2007 onwards') == val %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select><br><br>
+          {% for label, val in [
+            ('Before 1900','England and Wales: before 1900'),
+            ('1900–1929','England and Wales: 1900-1929'),
+            ('1930–1949','England and Wales: 1930-1949'),
+            ('1950–1966','England and Wales: 1950-1966'),
+            ('1967–1975','England and Wales: 1967-1975'),
+            ('1976–1982','England and Wales: 1976-1982'),
+            ('1983–1990','England and Wales: 1983-1990'),
+            ('1991–1995','England and Wales: 1991-1995'),
+            ('1996–2002','England and Wales: 1996-2002'),
+            ('2003–2006','England and Wales: 2003-2006'),
+            ('2007 onwards','England and Wales: 2007 onwards')
+          ] %}
+          <option value="{{ val }}" {% if selected.get('age_band', 'England and Wales: 2007 onwards') == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
 
-        <button type="submit">Estimate price</button>
-    </form>
+      <button type="submit">Estimate price</button>
+    </div>
+  </form>
 
-    {% if price %}
-    <hr>
-    <h2>Estimated price: {{ price }}</h2>
-    <h3>Why:</h3>
-    <ul>
-        {% for r in reasons %}
-        <li>{{ r }}</li>
-        {% endfor %}
-    </ul>
-    <p><small>Estimated at 2024 market levels. This is a research prototype, not financial advice.</small></p>
-    {% endif %}
+  {% if price %}
+  <div class="card">
+    <div class="price-label">Estimated value{% if matched_town %} — {{ matched_town.title() }}{% endif %}</div>
+    <div class="price">{{ price }}</div>
+    <div class="price-note">At 2024 market levels</div>
+    <h3>Why this estimate</h3>
+    {% for r in reasons %}
+    <div class="reason {{ 'up' if r.up else 'down' }}">
+      <span>{{ r.phrase }}</span>
+      <span class="amount {{ 'up' if r.up else 'down' }}">{{ '+' if r.up else '−' }}{{ r.amount }}</span>
+    </div>
+    {% endfor %}
+    <h3>Affordability check</h3>
+    <div class="afford-meta">Assuming a 10% deposit ({{ afford.deposit }}) on a 25-year mortgage. Loan: {{ afford.loan }}.</div>
+    <table>
+      <tr><th>Interest rate</th><th style="text-align:right">Monthly payment</th></tr>
+      {% for row in afford.rows %}
+      <tr><td>{{ row.label }}</td><td class="pay">{{ row.payment }}</td></tr>
+      {% endfor %}
+    </table>
+    <div class="disclaimer">
+      Estimates are based on historical patterns in property characteristics, not an inspection of a specific home.
+      "Average" refers to the England &amp; Wales average. Mortgage figures assume a representative 5.5% rate and are illustrative only.
+      This is a research prototype, not financial advice.
+    </div>
+  </div>
+  {% endif %}
+</div>
 
+<script>
+  const PAIRS = {{ town_pairs|tojson }};
+  const input = document.getElementById('townInput');
+  const list = document.getElementById('acList');
+  let activeIndex = -1;
+  function render(matches) {
+    if (matches.length === 0) { list.innerHTML = '<div class="ac-empty">No matching town found</div>'; list.style.display='block'; return; }
+    list.innerHTML = matches.map(m =>
+      `<div class="ac-item" data-val="${m[0]}"><span>${m[0]}</span><span class="co">${m[1]}</span></div>`
+    ).join('');
+    list.style.display='block'; activeIndex=-1;
+  }
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toUpperCase();
+    if (q.length < 1) { list.style.display='none'; return; }
+    const starts = PAIRS.filter(m => m[0].startsWith(q));
+    const contains = PAIRS.filter(m => !m[0].startsWith(q) && m[0].includes(q));
+    render(starts.concat(contains).slice(0, 10));
+  });
+  list.addEventListener('click', (e) => {
+    const item = e.target.closest('.ac-item');
+    if (item) { input.value = item.dataset.val; list.style.display='none'; }
+  });
+  input.addEventListener('keydown', (e) => {
+    const items = list.querySelectorAll('.ac-item');
+    if (e.key === 'ArrowDown') { activeIndex = Math.min(activeIndex+1, items.length-1); }
+    else if (e.key === 'ArrowUp') { activeIndex = Math.max(activeIndex-1, 0); }
+    else if (e.key === 'Enter' && activeIndex >= 0) { e.preventDefault(); input.value = items[activeIndex].dataset.val; list.style.display='none'; return; }
+    else { return; }
+    items.forEach((it, i) => it.classList.toggle('active', i === activeIndex));
+    if (items[activeIndex]) items[activeIndex].scrollIntoView({block:'nearest'});
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.ac-wrap')) list.style.display='none'; });
+</script>
 </body>
 </html>

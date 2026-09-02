@@ -14,14 +14,27 @@ rating_map = bundle["rating_map"]
 band_to_year = bundle["band_to_year"]
 feature_order = bundle["feature_order"]
 town_to_county = bundle["town_to_county"]
-base_value = bundle["base_value"]
 
 explainer = shap.TreeExplainer(model)
 towns = sorted(town_means.index.tolist())
+town_pairs = [[t, town_to_county.get(t, "").title()] for t in towns]
 PREDICT_YEAR = 2024
 
+
+def resolve_town(raw):
+    if not raw:
+        return None
+    t = raw.strip().upper()
+    if t in town_means.index:
+        return t
+    for name in towns:
+        if name.startswith(t):
+            return name
+    return None
+
+
 def build_features(form):
-    town = form["towncity"]
+    town = resolve_town(form.get("towncity", ""))
     ptype = form["propertytype"]
     county = town_to_county.get(town)
     row = {
@@ -38,12 +51,14 @@ def build_features(form):
         "towncity_enc": town_means.get(town, global_mean),
         "county_enc": county_means.get(county, global_mean),
     }
-    return pd.DataFrame([row])[feature_order]
+    return pd.DataFrame([row])[feature_order], town
 
-def explain(X, top_n=3):
+
+def explain(X, ptype, top_n=4):
     shap_row = explainer.shap_values(X)[0]
     impact = pd.Series(shap_row, index=feature_order)
     impact = impact.reindex(impact.abs().sort_values(ascending=False).index)
+    ptype_done = False
     reasons = []
     for feat, val in impact.items():
         if feat == "year":
@@ -52,45 +67,70 @@ def explain(X, top_n=3):
         amount = round(abs(val) / 1000) * 1000
         v = X.iloc[0][feat]
         if feat == "TOTAL_FLOOR_AREA":
-            phrase = f"At {int(v)} m2, it's {'larger' if up else 'smaller'} than average"
+            phrase = f"At {int(v)} m\u00b2, it's {'larger' if up else 'smaller'} than average"
         elif feat == "towncity_enc":
-            phrase = "The area sells above average" if up else "The area sells below average"
+            phrase = "This area sells above average" if up else "This area sells below average"
         elif feat == "county_enc":
             phrase = "The wider region sells above average" if up else "The wider region sells below average"
         elif feat == "build_year":
             phrase = "A newer property" if up else "An older property"
         elif feat == "CURRENT_ENERGY_RATING":
-            phrase = "A good energy rating" if up else "A lower energy rating"
-        elif feat == "propertytype_Semi-Detached" and v:
-            phrase = "It's semi-detached"
-        elif feat == "propertytype_Terraced" and v:
-            phrase = "It's terraced"
-        elif feat == "propertytype_Flat" and v:
-            phrase = "It's a flat"
+            phrase = "A better energy rating" if up else "A lower energy rating"
         elif feat.startswith("propertytype"):
-            phrase = "Its property type"
+            if ptype_done:
+                continue
+            ptype_done = True
+            phrase = f"It's {ptype.lower()}"
         elif feat == "duration_Leasehold":
             phrase = "It's leasehold" if v else "It's freehold"
         else:
-            phrase = "Its property details"
-        verb = "adds" if up else "reduces"
-        reasons.append(f"{phrase} \u2014 {verb} about \u00a3{amount:,.0f}.")
+            continue
+        reasons.append({"phrase": phrase, "up": up, "amount": f"\u00a3{amount:,.0f}"})
         if len(reasons) >= top_n:
             break
     return reasons
 
+
+def monthly_payment(loan, annual_rate_pct, years=25):
+    r = (annual_rate_pct / 100) / 12
+    n = years * 12
+    if r == 0:
+        return loan / n
+    return loan * (r * (1 + r) ** n) / ((1 + r) ** n - 1)
+
+
+def affordability(price, deposit_pct=10, base_rate=5.5, years=25):
+    loan = price * (1 - deposit_pct / 100)
+    rows = []
+    for bump in [0, 1, 2, 3]:
+        rate = base_rate + bump
+        pay = monthly_payment(loan, rate, years)
+        rows.append({
+            "label": f"{rate:.1f}%" + (" (current)" if bump == 0 else f" (+{bump}%)"),
+            "payment": f"\u00a3{pay:,.0f}",
+        })
+    return {
+        "deposit": f"\u00a3{price * deposit_pct/100:,.0f}",
+        "loan": f"\u00a3{loan:,.0f}",
+        "rows": rows,
+    }
+
+
 @app.route("/")
 def home():
-    return render_template("index.html", towns=towns, selected={})
+    return render_template("index.html", town_pairs=town_pairs, selected={})
+
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    X = build_features(request.form)
+    X, matched_town = build_features(request.form)
     price = model.predict(X)[0]
-    reasons = explain(X)
-    return render_template("index.html", towns=towns,
-                           price=f"\u00a3{price:,.0f}", reasons=reasons,
-                           selected=request.form)
+    reasons = explain(X, request.form["propertytype"])
+    afford = affordability(price)
+    return render_template("index.html", town_pairs=town_pairs, price=f"\u00a3{price:,.0f}",
+                           reasons=reasons, afford=afford, selected=request.form,
+                           matched_town=matched_town)
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
