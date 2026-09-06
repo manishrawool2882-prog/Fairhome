@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fairhome — Property Value Estimator</title>
+<title>Fairhome Property Value Estimator</title>
 <style>
   :root {
     --ink: #17282e; --muted: #5c7079; --line: #dde5e7; --bg: #eaefe9;
@@ -69,10 +69,13 @@
   .price-label { color: var(--muted); font-size: 14px; }
   .price { font-size: 44px; font-weight: 700; letter-spacing: -0.02em; color: var(--primary); margin: 2px 0 4px; }
   .price-note { color: var(--muted); font-size: 13px; }
-  h3 { font-size: 17px; margin: 22px 0 12px; }
-  .reason { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-radius: 9px; margin-bottom: 8px; font-size: 15px; }
+  h3 { font-size: 17px; margin: 22px 0 6px; }
+  .h3-sub { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+  .reason { display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 14px; border-radius: 9px; margin-bottom: 8px; font-size: 15px; }
   .reason.up { background: var(--up-bg); } .reason.down { background: var(--down-bg); }
-  .amount { font-weight: 700; white-space: nowrap; margin-left: 14px; }
+  .reason .txt { display: flex; flex-direction: column; }
+  .reason .detail { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .amount { font-weight: 700; white-space: nowrap; margin-left: 14px; padding-top: 1px; }
   .amount.up { color: var(--up); } .amount.down { color: var(--down); }
   table { width: 100%; border-collapse: collapse; margin-top: 6px; }
   th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 15px; }
@@ -86,7 +89,7 @@
 <div class="wrap">
   <header>
     <div class="brand">Fairhome</div>
-    <div class="tag">Estimate a property's value across England &amp; Wales — and understand why.</div>
+    <div class="tag">Estimate a property's value across England &amp; Wales. Understand why.</div>
   </header>
 
   <form action="/predict" method="post">
@@ -163,16 +166,22 @@
 
   {% if price %}
   <div class="card">
-    <div class="price-label">Estimated value{% if matched_town %} — {{ matched_town.title() }}{% endif %}</div>
+    <div class="price-label">Estimated value{% if matched_town %} in {{ matched_town.title() }}{% endif %}</div>
     <div class="price">{{ price }}</div>
     <div class="price-note">At 2024 market levels</div>
+
     <h3>Why this estimate</h3>
+    <div class="h3-sub">How the estimate was built up, factor by factor:</div>
     {% for r in reasons %}
     <div class="reason {{ 'up' if r.up else 'down' }}">
-      <span>{{ r.phrase }}</span>
+      <span class="txt">
+        <span>{{ r.phrase }}</span>
+        {% if r.detail %}<span class="detail">{{ r.detail }}</span>{% endif %}
+      </span>
       <span class="amount {{ 'up' if r.up else 'down' }}">{{ '+' if r.up else '−' }}{{ r.amount }}</span>
     </div>
     {% endfor %}
+
     <h3>Affordability check</h3>
     <div class="afford-meta">Assuming a 10% deposit ({{ afford.deposit }}) on a 25-year mortgage. Loan: {{ afford.loan }}.</div>
     <table>
@@ -181,10 +190,10 @@
       <tr><td>{{ row.label }}</td><td class="pay">{{ row.payment }}</td></tr>
       {% endfor %}
     </table>
+
     <div class="disclaimer">
-      Estimates are based on historical patterns in property characteristics, not an inspection of a specific home.
-      "Average" refers to the England &amp; Wales average. Mortgage figures assume a representative 5.5% rate and are illustrative only.
-      This is a research prototype, not financial advice.
+      <strong>How to read this:</strong> These factors show <em>how the model calculated</em> the estimate from historical patterns. They are not the real-world reasons an area is cheaper or dearer (such as local jobs, schools, or transport), which aren't in the data.
+      "Average" refers to the England &amp; Wales average. Estimates are based on property characteristics, not an inspection of a specific home. Mortgage figures assume a representative 5.5% rate and are illustrative only. This is a research prototype, not financial advice.
     </div>
   </div>
   {% endif %}

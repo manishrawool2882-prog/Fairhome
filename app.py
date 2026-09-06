@@ -14,10 +14,12 @@ rating_map = bundle["rating_map"]
 band_to_year = bundle["band_to_year"]
 feature_order = bundle["feature_order"]
 town_to_county = bundle["town_to_county"]
+base_value = bundle["base_value"]
 
 explainer = shap.TreeExplainer(model)
 towns = sorted(town_means.index.tolist())
 town_pairs = [[t, town_to_county.get(t, "").title()] for t in towns]
+NAT_AVG = round(global_mean / 1000) * 1000
 PREDICT_YEAR = 2024
 
 
@@ -54,38 +56,63 @@ def build_features(form):
     return pd.DataFrame([row])[feature_order], town
 
 
-def explain(X, ptype, top_n=4):
+def explain(X, ptype, town, top_n=4):
     shap_row = explainer.shap_values(X)[0]
     impact = pd.Series(shap_row, index=feature_order)
     impact = impact.reindex(impact.abs().sort_values(ascending=False).index)
     ptype_done = False
     reasons = []
+    town_avg = round(town_means.get(town, global_mean) / 1000) * 1000
     for feat, val in impact.items():
         if feat == "year":
             continue
         up = val > 0
         amount = round(abs(val) / 1000) * 1000
         v = X.iloc[0][feat]
+        detail = ""
         if feat == "TOTAL_FLOOR_AREA":
             phrase = f"At {int(v)} m\u00b2, it's {'larger' if up else 'smaller'} than average"
+            detail = "Compared with a typical UK home"
         elif feat == "towncity_enc":
             phrase = "This area sells above average" if up else "This area sells below average"
+            detail = f"Local average \u2248 \u00a3{town_avg:,.0f} vs \u00a3{NAT_AVG:,.0f} nationally"
         elif feat == "county_enc":
             phrase = "The wider region sells above average" if up else "The wider region sells below average"
+            detail = f"Compared with the \u00a3{NAT_AVG:,.0f} national average"
         elif feat == "build_year":
-            phrase = "A newer property" if up else "An older property"
+            yr = int(v)
+            decade = (yr // 10) * 10
+            if yr >= 2000:
+                phrase = "A relatively modern property"
+            elif yr >= 1970:
+                phrase = "A mid-to-late 20th century property"
+            else:
+                phrase = "An older, period property"
+            detail = f"Built around the {decade}s" + (" or later" if yr >= 2010 else "")
         elif feat == "CURRENT_ENERGY_RATING":
             phrase = "A better energy rating" if up else "A lower energy rating"
+            detail = "Most UK homes are rated D"
         elif feat.startswith("propertytype"):
             if ptype_done:
                 continue
             ptype_done = True
             phrase = f"It's {ptype.lower()}"
+            if ptype == "Detached":
+                detail = "Detached homes usually sell for the most"
+            elif ptype == "Flat":
+                detail = "Flats usually sell for less than houses"
+            elif ptype == "Terraced":
+                detail = "Terraced homes are often more affordable"
+            elif ptype == "Semi-Detached":
+                detail = "Semi-detached homes sit in the mid-range"
+            else:
+                detail = "Property type affects the typical price"
         elif feat == "duration_Leasehold":
             phrase = "It's leasehold" if v else "It's freehold"
+            detail = "Leasehold can lower value" if v else "Freehold is usually valued higher"
         else:
             continue
-        reasons.append({"phrase": phrase, "up": up, "amount": f"\u00a3{amount:,.0f}"})
+        reasons.append({"phrase": phrase, "detail": detail, "up": up, "amount": f"\u00a3{amount:,.0f}"})
         if len(reasons) >= top_n:
             break
     return reasons
@@ -125,7 +152,7 @@ def home():
 def predict():
     X, matched_town = build_features(request.form)
     price = model.predict(X)[0]
-    reasons = explain(X, request.form["propertytype"])
+    reasons = explain(X, request.form["propertytype"], matched_town)
     afford = affordability(price)
     return render_template("index.html", town_pairs=town_pairs, price=f"\u00a3{price:,.0f}",
                            reasons=reasons, afford=afford, selected=request.form,
