@@ -1,4 +1,4 @@
-# Fairhome — Explainable ML House Price Valuation
+# Fairhome - Explainable ML House Price Valuation
 
 # Fairhome
 
@@ -6,7 +6,7 @@ An explainable machine-learning web application that estimates house prices in
 England and Wales, explains each estimate in plain English using SHAP, and
 stress-tests mortgage affordability under rising interest rates.
 
-**MSc Data Analytics with Banking & Finance dissertation project — Sheffield Hallam University.**
+**MSc Data Analytics with Banking & Finance dissertation project - Sheffield Hallam University.**
 
 Live app: https://fairhome.onrender.com
 
@@ -40,11 +40,11 @@ trained model files are not included in this repository.
 3. Open `http://localhost:5000`
 
 ## Project structure
-- `app.py` — Flask application (prediction, SHAP explanation, affordability)
-- `templates/index.html` — front-end
-- `requirements.txt`, `Procfile`, `runtime.txt` — deployment config
+- `app.py` - Flask application (prediction, SHAP explanation, affordability)
+- `templates/index.html` - front-end
+- `requirements.txt`, `Procfile`, `runtime.txt` - deployment config
 - (model bundle and data files excluded via `.gitignore`)
 
 ## Author
-Manish Anand Rawool — MSc Data Analytics with Banking & Finance, Sheffield Hallam University.
+Manish Anand Rawool - MSc Data Analytics with Banking & Finance, Sheffield Hallam University.
 Supervisor: Caren Fernandes.
